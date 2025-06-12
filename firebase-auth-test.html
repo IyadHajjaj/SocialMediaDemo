@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Firebase Auth Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .container {
+      background-color: #f5f5f5;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .button-group {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .signup-btn {
+      background-color: #4CAF50;
+      color: white;
+    }
+    .login-btn {
+      background-color: #2196F3;
+      color: white;
+    }
+    .logout-btn {
+      background-color: #f44336;
+      color: white;
+    }
+    .user-info {
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+    .hidden {
+      display: none;
+    }
+    .message {
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #dff0d8;
+      color: #3c763d;
+    }
+    .error {
+      background-color: #f2dede;
+      color: #a94442;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Firebase Auth Test</h1>
+    
+    <div id="loginForm">
+      <div class="form-group">
+        <label for="nameInput">Name (for registration):</label>
+        <input type="text" id="nameInput" placeholder="Enter your name">
+      </div>
+      
+      <div class="form-group">
+        <label for="emailInput">Email:</label>
+        <input type="email" id="emailInput" placeholder="Enter your email">
+      </div>
+      
+      <div class="form-group">
+        <label for="passwordInput">Password:</label>
+        <input type="password" id="passwordInput" placeholder="Enter your password">
+      </div>
+      
+      <div class="button-group">
+        <button class="signup-btn" id="signupBtn">Sign Up</button>
+        <button class="login-btn" id="loginBtn">Sign In</button>
+      </div>
+    </div>
+    
+    <div id="userInfo" class="user-info hidden">
+      <h3>You are signed in as:</h3>
+      <p><strong>Email:</strong> <span id="userEmail"></span></p>
+      <p><strong>Name:</strong> <span id="userName"></span></p>
+      <p><strong>UID:</strong> <span id="userUid"></span></p>
+      
+      <button class="logout-btn" id="logoutBtn">Sign Out</button>
+    </div>
+    
+    <div id="message" class="message hidden"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+
+  <script>
+    // Your Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyBLCHFKC1YYHdg70jS6roIi1B5xtHC9-dc",
+      authDomain: "socialmp-ceb72.firebaseapp.com",
+      projectId: "socialmp-ceb72",
+      storageBucket: "socialmp-ceb72.firebasestorage.app",
+      messagingSenderId: "193171957044",
+      appId: "1:193171957044:web:7183a2f81a3ecd9ea23161",
+      measurementId: "G-9E359BMTFV",
+      databaseURL: "https://socialmp-ceb72-default-rtdb.firebaseio.com"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    
+    // DOM Elements
+    const loginForm = document.getElementById('loginForm');
+    const userInfo = document.getElementById('userInfo');
+    const nameInput = document.getElementById('nameInput');
+    const emailInput = document.getElementById('emailInput');
+    const passwordInput = document.getElementById('passwordInput');
+    const signupBtn = document.getElementById('signupBtn');
+    const loginBtn = document.getElementById('loginBtn');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const userEmail = document.getElementById('userEmail');
+    const userName = document.getElementById('userName');
+    const userUid = document.getElementById('userUid');
+    const messageDiv = document.getElementById('message');
+    
+    // Utility functions
+    function showMessage(message, isError = false) {
+      messageDiv.textContent = message;
+      messageDiv.className = isError ? 'message error' : 'message success';
+      messageDiv.classList.remove('hidden');
+      
+      // Hide after 5 seconds
+      setTimeout(() => {
+        messageDiv.classList.add('hidden');
+      }, 5000);
+    }
+    
+    function updateUI(user) {
+      if (user) {
+        // User is signed in
+        loginForm.classList.add('hidden');
+        userInfo.classList.remove('hidden');
+        userEmail.textContent = user.email;
+        userName.textContent = user.displayName || 'Not set';
+        userUid.textContent = user.uid;
+        
+        console.log('User is signed in:', user.email);
+      } else {
+        // User is signed out
+        loginForm.classList.remove('hidden');
+        userInfo.classList.add('hidden');
+        
+        // Clear form
+        nameInput.value = '';
+        emailInput.value = '';
+        passwordInput.value = '';
+        
+        console.log('No user is signed in');
+      }
+    }
+    
+    // Check auth state on page load
+    firebase.auth().onAuthStateChanged(user => {
+      updateUI(user);
+    });
+    
+    // Sign up handler
+    signupBtn.addEventListener('click', async () => {
+      const name = nameInput.value.trim();
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      
+      if (!name || !email || !password) {
+        showMessage('Please fill in all fields', true);
+        return;
+      }
+      
+      try {
+        // Create user with email and password
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        console.log('User created successfully:', userCredential.user.uid);
+        
+        // Update profile with display name
+        await userCredential.user.updateProfile({
+          displayName: name,
+          photoURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff`
+        });
+        
+        showMessage('Account created successfully!');
+        updateUI(userCredential.user);
+      } catch (error) {
+        console.error('Registration error:', error);
+        showMessage(error.message, true);
+      }
+    });
+    
+    // Sign in handler
+    loginBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      
+      if (!email || !password) {
+        showMessage('Please enter email and password', true);
+        return;
+      }
+      
+      try {
+        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+        console.log('User signed in successfully:', userCredential.user.uid);
+        
+        showMessage('Logged in successfully!');
+      } catch (error) {
+        console.error('Login error:', error);
+        showMessage(error.message, true);
+      }
+    });
+    
+    // Sign out handler
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await firebase.auth().signOut();
+        console.log('User signed out successfully');
+        
+        showMessage('Logged out successfully!');
+      } catch (error) {
+        console.error('Logout error:', error);
+        showMessage(error.message, true);
+      }
+    });
+  </script>
+</body>
+</html> 
